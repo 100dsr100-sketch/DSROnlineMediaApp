@@ -21,9 +21,13 @@ A webpage can't spawn `yt-dlp.exe`, `ffmpeg.exe`, or a WebView2 process, so a fe
 differently on purpose:
 
 - **YouTube** plays through YouTube's own official embedded player (`IFrame Player API`) instead
-  of a raw extracted stream — ads may appear; that's YouTube's player, not this app. Paste a
-  video link/id into Search to queue it with no key needed. Add a free **YouTube Data API v3**
-  key in Settings to search by song/artist name from here too.
+  of a raw extracted stream — ads may appear; that's YouTube's player, not this app. Search by
+  song/artist name goes through **`worker/`** — a small keyless Cloudflare Worker
+  (`dsr-ytsearch`, deployed at `dsr-ytsearch.100dsr100.workers.dev`) that fetches YouTube's own
+  public search-results page server-side and reads the same video list out of its embedded
+  `ytInitialData` — no API key, no quota. Pasting a video link/id into Search always works too,
+  relay or not. A YouTube Data API v3 key can be set in Settings as a fallback/alternative if the
+  relay field is cleared.
 - **Spotify** opens `open.spotify.com` in its own browser tab (Spotify blocks being framed by
   another site). This app can't inject controls into another origin's page, so transport buttons
   don't reach it — use Spotify's own tab for playback control.
@@ -33,10 +37,20 @@ differently on purpose:
 
 ## Settings
 
-Plex server URL + `X-Plex-Token` (defaults point at the user's own LAN server), optional YouTube
-Data API key, voice-search timeout, favourite/fallback audio output devices.
+Plex server URL + `X-Plex-Token` (defaults point at the user's own LAN server), YouTube search
+relay URL (defaults to the deployed `dsr-ytsearch` Worker) + optional YouTube Data API key
+fallback, voice-search timeout, favourite/fallback audio output devices.
 
 ## Hosting
 
 Static files only (`index.html`, `manifest.json`, `service-worker.js`, `icon.svg`) — works from
 `file://`, a local dev server, or GitHub Pages.
+
+## `worker/` — YouTube search relay
+
+`worker/worker.js` is a standalone Cloudflare Worker (deploy with `npx wrangler deploy` from
+that folder) that proxies a keyless YouTube search: `GET <worker-url>/?q=<query>` returns
+`{ items: [{ id, title, channel, durationSec, views }, ...] }`. It's the same relay pattern as
+the `dsr-yahoo` Worker behind DSR Dashboard — reads a public page server-side because a browser
+can't (no CORS headers on `youtube.com/results`). Nothing it fetches isn't already sent to any
+visitor of that search page.

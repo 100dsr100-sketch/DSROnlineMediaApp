@@ -233,15 +233,19 @@
       <button class="btn sm" id="btnTestPlex">Test connection</button>
     </div>
 
-    <label style="margin-top:12px">YouTube Data API key (optional)
-      <input type="text" id="sYtKey" autocomplete="off" spellcheck="false" placeholder="leave blank to paste video links instead">
+    <label style="margin-top:12px">YouTube search relay (keyless)
+      <input type="text" id="sYtWorker" autocomplete="off" spellcheck="false" placeholder="https://dsr-ytsearch.100dsr100.workers.dev">
+    </label>
+    <label>YouTube Data API key (optional fallback)
+      <input type="text" id="sYtKey" autocomplete="off" spellcheck="false" placeholder="only used if the relay above is blank or fails">
     </label>
     <div class="note">
-      A browser can't run yt-dlp, so this app can't search YouTube for free. Paste a YouTube link
-      or bare video id into Search and hit Find — that always works, no key needed, and plays
-      through YouTube's own official embedded player (ad-free direct-stream extraction isn't
-      something a webpage is allowed to do). To search by song/artist name from here too, get a
-      free <b>YouTube Data API v3</b> key from the Google Cloud Console and paste it above.
+      A browser can't run yt-dlp, so search by song/artist name goes through a small keyless
+      relay (a Cloudflare Worker) that reads YouTube's own public search-results page server-side
+      — no API key, no quota. Playback is always YouTube's official embedded player (ad-free
+      direct-stream extraction isn't something a webpage is allowed to do). Pasting a YouTube
+      link or bare video id into Search always works too, relay or not. If you'd rather use your
+      own <b>YouTube Data API v3</b> key instead, paste it above and clear the relay field.
     </div>
 
     <label>Voice search timeout (seconds)
@@ -290,6 +294,7 @@ const DEF = {
   plexBaseUrl: "http://192.168.1.101:32400",
   plexToken: "c4g44rD3k6Rqs-DzCcLG",
   ytApiKey: "",
+  ytSearchWorker: "https://dsr-ytsearch.100dsr100.workers.dev",
   voiceTimeoutSec: 8,
   autoAdvance: true, shuffleQueue: false, repeatQueue: false, showLyrics: false,
   lastVolume: 90,
@@ -393,9 +398,30 @@ function scoreCandidate(qlc, title, chan, durSec, views){
   if(views>50000000) score += 4;
   return score;
 }
-// Search via YouTube Data API v3 (needs a user-supplied key). Two cheap
-// calls: search.list for candidates, videos.list to get duration/viewCount
-// for the scoring pass (mirrors the desktop app's yt-dlp flat-playlist score).
+// Primary search path: a small keyless Cloudflare Worker (dsr-ytsearch) that
+// fetches YouTube's own public search-results page server-side and pulls the
+// video list out of its embedded ytInitialData - no API key, no quota.
+async function ytWorkerSearch(query){
+  if(!cfg.ytSearchWorker) throw new Error("no search worker configured");
+  const url = cfg.ytSearchWorker.replace(/\/$/,"") + "/?q=" + encodeURIComponent(query + " official music video");
+  const r = await fetch(url);
+  if(!r.ok) throw new Error("search worker HTTP "+r.status);
+  const j = await r.json();
+  if(j.error) throw new Error(j.error);
+  const items = Array.isArray(j.items) ? j.items : [];
+  if(items.length===0) return null;
+  const qlc = query.toLowerCase();
+  let best=null, bestScore=-1e18;
+  items.forEach((it,idx)=>{
+    if(!it.id) return;
+    let sc = scoreCandidate(qlc, it.title||"", it.channel||"", it.durationSec||0, it.views||0) - idx*1.5;
+    if(sc > bestScore){ bestScore = sc; best = { id: it.id, title: it.title||"" }; }
+  });
+  return best;
+}
+// Fallback search path: YouTube Data API v3 (needs a user-supplied key). Two
+// cheap calls: search.list for candidates, videos.list to get
+// duration/viewCount for the scoring pass.
 async function ytApiSearch(query){
   if(!cfg.ytApiKey) throw new Error("no YouTube API key set");
   const q = encodeURIComponent(query + " official music video");
@@ -808,16 +834,25 @@ async function doFind(){
       playIndex(idx);
       return;
     }
-    if(!cfg.ytApiKey){
-      window.open("https://www.youtube.com/results?search_query="+encodeURIComponent(q), "_blank");
-      status("No YouTube API key set — opened a YouTube search tab. Paste a video link back into Search to queue it (Settings to add a key for in-app search).");
+    status('Finding official music video for "'+q+'"...');
+    let best = null, lastErr = null;
+    if(cfg.ytSearchWorker){
+      try{ best = await ytWorkerSearch(q); }
+      catch(e){ lastErr = e; }
+    }
+    if(!best && cfg.ytApiKey){
+      try{ best = await ytApiSearch(q); }
+      catch(e){ lastErr = e; }
+    }
+    if(!best){
+      if(!cfg.ytSearchWorker && !cfg.ytApiKey){
+        window.open("https://www.youtube.com/results?search_query="+encodeURIComponent(q), "_blank");
+        status("No YouTube search configured — opened a YouTube search tab. Paste a video link back into Search to queue it.");
+      } else {
+        status(lastErr ? ("YouTube search failed: "+lastErr.message) : ('No match found for "'+q+'".'));
+      }
       return;
     }
-    status('Finding official music video for "'+q+'"...');
-    let best;
-    try{ best = await ytApiSearch(q); }
-    catch(e){ status("YouTube search failed: "+e.message); return; }
-    if(!best){ status('No match found for "'+q+'".'); return; }
     const idx = addItem("youtube", best.title || q, best.id);
     playIndex(idx);
   } finally {
@@ -1030,6 +1065,7 @@ $("#btnRelease").addEventListener("click", async ()=>{
 function openSettings(){
   $("#sPlexUrl").value = cfg.plexBaseUrl;
   $("#sPlexToken").value = cfg.plexToken;
+  $("#sYtWorker").value = cfg.ytSearchWorker;
   $("#sYtKey").value = cfg.ytApiKey;
   $("#sVoiceTimeout").value = cfg.voiceTimeoutSec;
   setStat("");
@@ -1041,6 +1077,7 @@ $("#btnSetClose").addEventListener("click", ()=> $("#setWrap").classList.remove(
 $("#btnSetSave").addEventListener("click", ()=>{
   cfg.plexBaseUrl = $("#sPlexUrl").value.trim();
   cfg.plexToken = $("#sPlexToken").value.trim();
+  cfg.ytSearchWorker = $("#sYtWorker").value.trim();
   cfg.ytApiKey = $("#sYtKey").value.trim();
   cfg.voiceTimeoutSec = Math.max(3, parseInt($("#sVoiceTimeout").value,10) || 8);
   cfg.fallbackOutputId = $("#sFallbackOut").value || "";
@@ -1124,7 +1161,7 @@ $("#btnAddFav").addEventListener("click", ()=>{
   renderQueue();
   refreshOutputs();
   if(voiceAvailable()===false) $("#btnVoice").title = "Not supported in this browser";
-  status("Ready. " + (cfg.ytApiKey ? "YouTube search key set." : "No YouTube API key — paste video links, or add a key in Settings."));
+  status("Ready. " + (cfg.ytSearchWorker ? "YouTube search via relay." : (cfg.ytApiKey ? "YouTube search key set." : "No YouTube search configured — paste video links, or set one up in Settings.")));
   if("serviceWorker" in navigator){
     navigator.serviceWorker.register("service-worker.js").catch(()=>{});
   }
