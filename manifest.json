@@ -1,0 +1,15 @@
+{
+  "name": "DSR Online Media App",
+  "short_name": "DSR Media",
+  "description": "Jukebox: search YouTube/Plex/Spotify, queue, play, route audio output, synced lyrics.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

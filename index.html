@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>DSR Online Media App</title>
+<style>
+  :root{
+    --gold:#FFD700; --gold-deep:#D4AF42; --gold-dim:#8a7420;
+    --ink:#000; --panel:#0b0b0b; --panel2:#121212; --field:#141414;
+    --line:#2a2410; --bad:#ff8a6a;
+    --font:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0;height:100%;background:var(--ink);color:var(--gold);font-family:var(--font);
+    -webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+  button,input,select{font-family:var(--font)}
+
+  .app{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--ink);
+    border:8px solid var(--gold);
+    box-shadow:inset 0 0 0 2px var(--ink), inset 0 0 0 3px var(--gold-deep);}
+  @supports(padding:max(0px)){
+    .app{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  }
+
+  .banner{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--ink);
+    border-bottom:1px solid var(--line);flex:0 0 auto}
+  .banner img{width:34px;height:34px;flex:0 0 auto}
+  .banner .t{flex:1;min-width:0}
+  .banner h1{margin:0;font-size:15px;font-weight:700;color:var(--gold);letter-spacing:.2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .banner p{margin:0;font-size:11px;color:var(--gold-deep);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .banner .ver{font-size:12px;font-weight:700;color:var(--gold);flex:0 0 auto}
+
+  .topbar{flex:0 0 auto;background:var(--panel);border-bottom:1px solid var(--line);
+    padding:8px 10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  input[type=text],input[type=search],input[type=url],input[type=number],select{
+    background:var(--field);color:var(--gold);border:1px solid var(--gold-deep);border-radius:8px;
+    padding:8px 10px;font-size:13px;min-width:0}
+  input::placeholder{color:var(--gold-dim)}
+  #edSearch{flex:1 1 180px;min-width:120px}
+  select#cbSource{flex:0 0 auto}
+
+  .btn{padding:8px 12px;border:1px solid var(--gold-deep);border-radius:8px;
+    background:linear-gradient(#1f1f1f,#121212);color:var(--gold);font-size:12px;font-weight:600;cursor:pointer;
+    white-space:nowrap}
+  .btn:active{transform:translateY(1px)}
+  .btn.on{color:#000;background:linear-gradient(var(--gold),var(--gold-deep));border-color:var(--gold)}
+  .btn.sm{padding:6px 9px;font-size:11px}
+  .btn.warn{border-color:#6a3b3b;color:#ff9a7a}
+  .btn:disabled{opacity:.4;cursor:default}
+
+  .lblnow{flex:0 0 auto;background:var(--ink);padding:4px 12px 8px;font-size:13px;font-weight:700;
+    color:var(--gold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid var(--line)}
+
+  .mid{flex:1;display:flex;min-height:0}
+  .queuepane{width:260px;flex:0 0 auto;display:flex;flex-direction:column;background:var(--panel);
+    border-right:1px solid var(--line);min-height:0}
+  .queuepane .qhead{padding:8px 10px 4px;font-size:12px;font-weight:700;color:var(--gold-deep)}
+  .qbtns{display:flex;gap:6px;padding:0 10px 8px}
+  .qlist{flex:1;overflow-y:auto;min-height:0}
+  .qitem{padding:8px 10px;border-bottom:1px solid #1a1a1a;font-size:12px;cursor:pointer;
+    display:flex;gap:6px;align-items:center;line-height:1.3}
+  .qitem:active{background:#1b1808}
+  .qitem.cur{background:#241d05;color:var(--gold)}
+  .qitem .tag{flex:0 0 auto;font-size:9px;font-weight:700;color:#000;background:var(--gold-deep);
+    border-radius:4px;padding:1px 4px}
+  .qitem .tt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--gold)}
+  .qempty{padding:16px 10px;text-align:center;color:var(--gold-dim);font-size:12px}
+  .qopts{border-top:1px solid var(--line);padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+  .chk{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--gold-deep);cursor:pointer}
+  .chk input{width:15px;height:15px;accent-color:var(--gold)}
+
+  .stage{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;position:relative;background:#050505}
+  #videoHost{flex:1;position:relative;background:#050505;min-height:0}
+  #localMedia{width:100%;height:100%;object-fit:contain;background:#000;display:block}
+  #ytHost{position:absolute;inset:0;display:none}
+  #ytHost.on{display:block}
+  #ytHost iframe{width:100%;height:100%;border:0}
+  #stageEmpty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:var(--gold-dim);font-size:13px;text-align:center;padding:20px;pointer-events:none}
+  #osd{position:absolute;left:0;right:0;bottom:0;padding:10px 14px 14px;text-align:center;
+    background:linear-gradient(transparent,rgba(0,0,0,.75) 40%);pointer-events:none}
+  #osd .l1{font-size:16px;font-weight:700;color:#FFD700;text-shadow:0 1px 3px #000}
+  #osd .l2{font-size:13px;color:#e8c96a;text-shadow:0 1px 3px #000;margin-top:2px}
+  #osd:empty,#osd.empty{display:none}
+
+  .transport{flex:0 0 auto;background:var(--panel);border-top:1px solid var(--line);padding:8px 10px;
+    display:flex;flex-direction:column;gap:6px}
+  .tp1{display:flex;align-items:center;gap:8px}
+  .tp1 .btn{min-width:40px;text-align:center}
+  #time{font-variant-numeric:tabular-nums;font-size:12px;color:var(--gold-deep);flex:0 0 auto;min-width:84px;text-align:right}
+  input[type=range]{flex:1;accent-color:var(--gold);height:22px}
+  .tp2{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .tp2 label{font-size:11px;color:var(--gold-deep);flex:0 0 auto}
+  #vol{width:120px}
+  #outSel{flex:1 1 140px;min-width:100px}
+  #status{flex:0 0 auto;font-size:11px;color:var(--gold-deep);padding:2px 2px 0;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* ---- modal (Settings) ---- */
+  .modalWrap{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;
+    justify-content:center;z-index:50;padding:16px}
+  .modalWrap.on{display:flex}
+  .modal{background:var(--panel);border:2px solid var(--gold-deep);border-radius:12px;max-width:520px;
+    width:100%;max-height:90vh;overflow-y:auto;padding:16px}
+  .modal h2{margin:0 0 10px;font-size:15px;color:var(--gold)}
+  .modal label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700;
+    color:var(--gold-deep);margin-bottom:10px}
+  .modal label input,.modal label select{font-size:13px}
+  .modal .row{display:flex;gap:8px;align-items:center}
+  .note{font-size:11px;color:var(--gold-deep);line-height:1.5;border:1px solid var(--line);
+    border-radius:8px;padding:10px;background:var(--panel2);margin:8px 0}
+  .favrow{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;border-bottom:1px solid #1a1a1a}
+  .favrow .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #setStatus{font-size:12px;min-height:16px;color:var(--gold);white-space:pre-wrap;margin-top:6px}
+  #setStatus.err{color:var(--bad)}
+  .modalBtns{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;position:sticky;bottom:0;
+    background:var(--panel);padding-top:8px}
+
+  #ctxMenu{position:fixed;background:var(--panel2);border:1px solid var(--gold-deep);border-radius:8px;
+    padding:4px;z-index:60;display:none;min-width:190px;box-shadow:0 6px 18px rgba(0,0,0,.6)}
+  #ctxMenu.on{display:block}
+  #ctxMenu .mi{padding:8px 10px;font-size:12px;color:var(--gold);cursor:pointer;border-radius:6px;white-space:nowrap}
+  #ctxMenu .mi:hover,#ctxMenu .mi:active{background:#241d05}
+  #ctxMenu .sep{height:1px;background:var(--line);margin:4px 2px}
+
+  @media (max-width:720px){
+    .mid{flex-direction:column}
+    .queuepane{width:auto;height:38vh;border-right:0;border-bottom:1px solid var(--line)}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="banner">
+    <img src="icon.svg" alt="">
+    <div class="t">
+      <h1>DSR Online Media App</h1>
+      <p>Jukebox — search, queue, play, route</p>
+    </div>
+    <div class="ver">1a</div>
+  </div>
+
+  <div class="topbar">
+    <input type="text" id="edSearch" placeholder="song / artist — Enter to find, or paste a YouTube link">
+    <select id="cbSource">
+      <option value="youtube">YouTube</option>
+      <option value="plex">Plex</option>
+      <option value="spotify">Spotify</option>
+    </select>
+    <button class="btn" id="btnFind">Find</button>
+    <button class="btn" id="btnVoice">🎤 Voice</button>
+    <button class="btn" id="btnOpenFile">Open File</button>
+    <button class="btn" id="btnDownload">Download</button>
+    <button class="btn" id="btnSettings">Settings</button>
+    <input type="file" id="fileInput" multiple hidden
+      accept="audio/*,video/*,.mp3,.m4a,.aac,.opus,.ogg,.flac,.wav,.wma,.mp4,.mkv,.mov,.webm,.avi,.ts,.m2ts,.flv">
+  </div>
+
+  <div class="lblnow" id="lblNow">Nothing playing</div>
+
+  <div class="mid">
+    <div class="queuepane">
+      <div class="qhead">Queue</div>
+      <div class="qbtns">
+        <button class="btn sm" id="btnSaveList">Save List</button>
+        <button class="btn sm" id="btnLoadList">Load List</button>
+        <input type="file" id="playlistInput" hidden accept=".dsrpl,.json">
+      </div>
+      <div class="qlist" id="qlist"></div>
+      <div class="qopts">
+        <label class="chk"><input type="checkbox" id="chkAuto" checked> Auto-advance queue</label>
+        <label class="chk"><input type="checkbox" id="chkShuffle"> Shuffle</label>
+        <label class="chk"><input type="checkbox" id="chkRepeat"> Repeat queue</label>
+        <label class="chk"><input type="checkbox" id="chkLyrics"> Lyrics (synced, on video)</label>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div id="videoHost">
+        <video id="localMedia" playsinline></video>
+        <div id="ytHost"></div>
+        <div id="stageEmpty">Search or open a file to start playing.<br>YouTube plays through the official embedded player (ads may appear — that's YouTube's own player, not this app). Spotify opens in its own tab; this app can't remote-control it.</div>
+        <div id="osd" class="empty"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="transport">
+    <div class="tp1">
+      <button class="btn" id="btnPrev">|&lt;</button>
+      <button class="btn" id="btnPlay">Play</button>
+      <button class="btn" id="btnStop">Stop</button>
+      <button class="btn" id="btnNext">&gt;|</button>
+      <input type="range" id="seek" min="0" max="1000" value="0">
+      <div id="time">0:00 / 0:00</div>
+    </div>
+    <div class="tp2">
+      <label>Vol</label>
+      <input type="range" id="vol" min="0" max="130" value="90">
+      <label>Output</label>
+      <select id="outSel"></select>
+      <button class="btn sm" id="btnConnect">Connect</button>
+      <button class="btn sm" id="btnRelease">Release</button>
+    </div>
+    <div id="status">Ready.</div>
+  </div>
+
+</div>
+
+<!-- ================= Settings modal ================= -->
+<div class="modalWrap" id="setWrap">
+  <div class="modal">
+    <h2>Settings</h2>
+
+    <label>Plex server URL
+      <input type="text" id="sPlexUrl" placeholder="http://192.168.1.101:32400">
+    </label>
+    <label>Plex X-Plex-Token
+      <input type="text" id="sPlexToken" autocomplete="off" spellcheck="false">
+    </label>
+    <div class="row">
+      <button class="btn sm" id="btnTestPlex">Test connection</button>
+    </div>
+
+    <label style="margin-top:12px">YouTube Data API key (optional)
+      <input type="text" id="sYtKey" autocomplete="off" spellcheck="false" placeholder="leave blank to paste video links instead">
+    </label>
+    <div class="note">
+      A browser can't run yt-dlp, so this app can't search YouTube for free. Paste a YouTube link
+      or bare video id into Search and hit Find — that always works, no key needed, and plays
+      through YouTube's own official embedded player (ad-free direct-stream extraction isn't
+      something a webpage is allowed to do). To search by song/artist name from here too, get a
+      free <b>YouTube Data API v3</b> key from the Google Cloud Console and paste it above.
+    </div>
+
+    <label>Voice search timeout (seconds)
+      <input type="number" id="sVoiceTimeout" min="3" max="30" value="8">
+    </label>
+
+    <label>Fallback output device (what "Release" switches back to)
+      <select id="sFallbackOut"></select>
+    </label>
+
+    <div class="note" id="favList" style="padding:6px 10px"></div>
+    <div class="row">
+      <select id="sCurOut" style="flex:1"></select>
+      <button class="btn sm" id="btnAddFav">Save as favourite</button>
+    </div>
+    <div class="note">
+      Output switching uses the browser's audio-output picker (Chrome/Edge only — Firefox and
+      Safari don't support it) and only affects locally-played and Plex audio; a YouTube embed's
+      sound is controlled by YouTube's own player and can't be re-routed from here.
+    </div>
+
+    <div id="setStatus"></div>
+    <div class="modalBtns">
+      <button class="btn" id="btnSetClose">Close</button>
+      <button class="btn on" id="btnSetSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="ctxMenu">
+  <div class="mi" data-a="play">Play now</div>
+  <div class="sep"></div>
+  <div class="mi" data-a="download">Download</div>
+  <div class="sep"></div>
+  <div class="mi" data-a="remove">Remove from queue</div>
+  <div class="mi" data-a="clear">Clear queue</div>
+  <div class="sep"></div>
+  <div class="mi" data-a="save">Save queue as playlist...</div>
+  <div class="mi" data-a="load">Load playlist...</div>
+</div>
+
+<script>
+/* ============================================================ config === */
+const LS = "dsroma.cfg";
+const DEF = {
+  plexBaseUrl: "http://192.168.1.101:32400",
+  plexToken: "c4g44rD3k6Rqs-DzCcLG",
+  ytApiKey: "",
+  voiceTimeoutSec: 8,
+  autoAdvance: true, shuffleQueue: false, repeatQueue: false, showLyrics: false,
+  lastVolume: 90,
+  fallbackOutputId: "",
+  btFavNames: [], btFavIds: []
+};
+let cfg = load();
+function load(){ let c=Object.assign({},DEF); try{ Object.assign(c, JSON.parse(localStorage.getItem(LS)||"{}")); }catch(e){} return c; }
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(cfg)); }catch(e){} }
+
+/* ============================================================= utils === */
+const $ = s => document.querySelector(s);
+function el(tag, cls, txt){ const e=document.createElement(tag); if(cls) e.className=cls; if(txt!=null) e.textContent=txt; return e; }
+function noSlash(u){ return String(u||"").replace(/[\/\s]+$/,""); }
+function fmtT(s){ if(!s||s<0) s=0; s=Math.floor(s); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+function status(s){ $("#status").textContent = s; }
+function setStat(s, isErr){ const e=$("#setStatus"); e.textContent=s; e.classList.toggle("err", !!isErr); }
+
+/* ================================================= Plex client (fetch) == */
+const Plex = {
+  base(){ return noSlash(cfg.plexBaseUrl); },
+  url(path){ const sep = path.indexOf("?")>=0 ? "&" : "?"; return this.base()+path+sep+"X-Plex-Token="+encodeURIComponent(cfg.plexToken); },
+  async get(path){
+    const r = await fetch(this.url(path), { headers:{Accept:"application/json"}, cache:"no-store" });
+    if(!r.ok){
+      if(r.status===401) throw new Error("401 Unauthorized — the X-Plex-Token is wrong or expired");
+      throw new Error("HTTP "+r.status+" from "+path);
+    }
+    return r.json();
+  },
+  streamURL(part){ return part ? this.base()+part+"?X-Plex-Token="+encodeURIComponent(cfg.plexToken) : ""; },
+  downloadURL(part){ return part ? this.base()+part+"?download=1&X-Plex-Token="+encodeURIComponent(cfg.plexToken) : ""; },
+  async testConnection(){
+    let name = "Plex server";
+    try{
+      const j = await this.get("/identity");
+      if(j && j.MediaContainer && j.MediaContainer.friendlyName) name = j.MediaContainer.friendlyName;
+    }catch(e){}
+    const j2 = await this.get("/library/sections"); // throws on auth failure
+    if(!(j2 && j2.MediaContainer)) throw new Error("server replied but not with a library list");
+    return name;
+  },
+  async searchTracks(query){
+    const enc = encodeURIComponent(query);
+    const j = await this.get("/search?type=10&query="+enc);
+    const out = [];
+    const mc = j && j.MediaContainer;
+    const arr = mc && (mc.Metadata || mc.Directory);
+    if(Array.isArray(arr)){
+      for(const e of arr){
+        if((e.type||"") !== "track" && !e.grandparentTitle) continue;
+        let streamPath = "";
+        const media = e.Media;
+        if(Array.isArray(media)){
+          for(const m of media){
+            const parts = m.Part;
+            if(Array.isArray(parts) && parts[0]){ streamPath = parts[0].key || ""; break; }
+          }
+        }
+        if(!streamPath) continue;
+        let subtitle = (e.grandparentTitle||"") + " - " + (e.parentTitle||"");
+        out.push({ title:e.title||"", subtitle, streamPath });
+      }
+    }
+    return out;
+  }
+};
+
+/* ==================================================== YouTube helpers == */
+function extractYouTubeId(s){
+  s = String(s||"").trim();
+  let m = s.match(/[?&]v=([^&#\s]+)/); if(m) return m[1];
+  m = s.match(/youtu\.be\/([^&#?\s]+)/); if(m) return m[1];
+  m = s.match(/youtube\.com\/shorts\/([^&#?\s]+)/); if(m) return m[1];
+  if(/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+  return "";
+}
+async function ytOEmbedTitle(id){
+  try{
+    const r = await fetch("https://www.youtube.com/oembed?url="+encodeURIComponent("https://www.youtube.com/watch?v="+id)+"&format=json");
+    if(!r.ok) return "";
+    const j = await r.json();
+    return j.title || "";
+  }catch(e){ return ""; }
+}
+function scoreCandidate(qlc, title, chan, durSec, views){
+  let score = 0;
+  const tlc = title.toLowerCase(), clc = chan.toLowerCase();
+  for(const w of qlc.split(/\s+/)) if(w && tlc.indexOf(w)>=0) score += 6;
+  if(tlc.indexOf("official")>=0) score += 20;
+  if(tlc.indexOf("music video")>=0 || tlc.indexOf("official video")>=0) score += 14;
+  if(clc.indexOf("vevo")>=0) score += 12;
+  if(clc.indexOf(" - topic")>=0) score += 4;
+  if(tlc.indexOf("lyric")>=0) score -= 8;
+  if(tlc.indexOf("live")>=0) score -= 10;
+  if(tlc.indexOf("cover")>=0) score -= 14;
+  if(tlc.indexOf("reaction")>=0 || tlc.indexOf("reviewed")>=0) score -= 30;
+  if(tlc.indexOf("1 hour")>=0 || tlc.indexOf("slowed")>=0) score -= 20;
+  if(durSec>0 && (durSec<75 || durSec>600)) score -= 12;
+  if(views>1000000) score += 4;
+  if(views>50000000) score += 4;
+  return score;
+}
+// Search via YouTube Data API v3 (needs a user-supplied key). Two cheap
+// calls: search.list for candidates, videos.list to get duration/viewCount
+// for the scoring pass (mirrors the desktop app's yt-dlp flat-playlist score).
+async function ytApiSearch(query){
+  if(!cfg.ytApiKey) throw new Error("no YouTube API key set");
+  const q = encodeURIComponent(query + " official music video");
+  const sUrl = "https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=12&q="+q+"&key="+encodeURIComponent(cfg.ytApiKey);
+  const sr = await fetch(sUrl);
+  if(!sr.ok) throw new Error("YouTube search HTTP "+sr.status);
+  const sj = await sr.json();
+  const items = Array.isArray(sj.items) ? sj.items : [];
+  if(items.length===0) return null;
+  const ids = items.map(i=>i.id && i.id.videoId).filter(Boolean);
+  let details = {};
+  try{
+    const dUrl = "https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id="+ids.join(",")+"&key="+encodeURIComponent(cfg.ytApiKey);
+    const dr = await fetch(dUrl);
+    if(dr.ok){
+      const dj = await dr.json();
+      for(const v of (dj.items||[])) details[v.id] = v;
+    }
+  }catch(e){}
+  const qlc = query.toLowerCase();
+  let best=null, bestScore=-1e18;
+  items.forEach((it,idx)=>{
+    const id = it.id && it.id.videoId; if(!id) return;
+    const sn = it.snippet || {};
+    const d = details[id];
+    let durSec = 0, views = 0;
+    if(d){
+      const iso = d.contentDetails && d.contentDetails.duration;
+      durSec = isoDurToSec(iso);
+      views = parseInt(d.statistics && d.statistics.viewCount, 10) || 0;
+    }
+    let sc = scoreCandidate(qlc, sn.title||"", sn.channelTitle||"", durSec, views) - idx*1.5;
+    if(sc > bestScore){ bestScore = sc; best = { id, title: sn.title||"" }; }
+  });
+  return best;
+}
+function isoDurToSec(iso){
+  if(!iso) return 0;
+  const m = String(iso).match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if(!m) return 0;
+  return (parseInt(m[1]||0,10)*3600) + (parseInt(m[2]||0,10)*60) + (parseInt(m[3]||0,10));
+}
+
+/* ========================================================== lyrics ==== */
+const JUNK = ["(official video)","(official music video)","(official audio)","(official lyric video)",
+  "(lyric video)","(lyrics)","(audio)","(visualizer)","(hd)","(4k)","(remastered)","[official video]","[4k]"];
+function stripTail(s){
+  let r = String(s||"").trim(); let l = r.toLowerCase();
+  for(const j of JUNK){ const p=l.indexOf(j); if(p>=0){ r=r.slice(0,p).trim(); l=r.toLowerCase(); } }
+  let p = l.indexOf(" - topic"); if(p>=0){ r=r.slice(0,p).trim(); l=r.toLowerCase(); }
+  p = l.indexOf(" feat"); if(p>=0){ r=r.slice(0,p).trim(); l=r.toLowerCase(); }
+  p = l.indexOf(" ft."); if(p>=0){ r=r.slice(0,p).trim(); }
+  return r.replace(/[-\s|]+$/,"").trim();
+}
+function splitArtistTitle(raw){
+  const s = String(raw||"").trim();
+  const p = s.indexOf(" - ");
+  if(p>=0) return { artist: s.slice(0,p).trim(), title: stripTail(s.slice(p+3)) };
+  return { artist:"", title: stripTail(s) };
+}
+function parseLRC(text){
+  const lines = String(text||"").replace(/\r\n/g,"\n").split("\n");
+  let offsetMs = 0;
+  const out = [];
+  for(const raw of lines){
+    let ln = raw, stamps = [];
+    while(ln.length>0 && ln[0]==="["){
+      const close = ln.indexOf("]");
+      if(close<0) break;
+      const stamp = ln.slice(1, close);
+      ln = ln.slice(close+1);
+      if(/^offset:/i.test(stamp)){ offsetMs = parseInt(stamp.slice(7).trim(),10)||0; continue; }
+      const m = stamp.match(/^(\d+):(\d+(?:[.,]\d+)?)$/);
+      if(m) stamps.push(parseInt(m[1],10)*60 + parseFloat(m[2].replace(",",".")));
+    }
+    const body = ln.trim();
+    if(stamps.length===0) continue;
+    for(const t of stamps) out.push({ t: t - offsetMs/1000, text: body });
+  }
+  out.sort((a,b)=>a.t-b.t);
+  return out;
+}
+function curLrcIndex(arr, t){
+  let r = -1;
+  for(let i=0;i<arr.length;i++){ if(arr[i].t <= t+0.05) r=i; else break; }
+  return r;
+}
+function urlEnc(s){ return encodeURIComponent(s); }
+async function fetchSyncedLyrics(artist, title, album, durSec){
+  if(!title) return { lines:[], info:"" };
+  try{
+    let q = new URLSearchParams({ artist_name: artist||"", track_name: title });
+    if(album) q.set("album_name", album);
+    if(durSec>0) q.set("duration", String(durSec));
+    let r = await fetch("https://lrclib.net/api/get?"+q.toString(), { headers:{Accept:"application/json"} });
+    let j = r.ok ? await r.json() : null;
+    if(!j || (!j.syncedLyrics && !j.plainLyrics)){
+      let sq = new URLSearchParams({ track_name: title });
+      if(artist) sq.set("artist_name", artist);
+      let sr = await fetch("https://lrclib.net/api/search?"+sq.toString(), { headers:{Accept:"application/json"} });
+      if(sr.ok){
+        const arr = await sr.json();
+        if(Array.isArray(arr) && arr.length){
+          j = arr.find(x=>x.syncedLyrics) || arr.find(x=>x.plainLyrics) || arr[0];
+        }
+      }
+    }
+    if(!j) return { lines:[], info:"no lyrics match" };
+    let info = j.trackName ? (j.trackName + (j.artistName ? " - "+j.artistName : "")) : "";
+    if(j.syncedLyrics){
+      const lines = parseLRC(j.syncedLyrics);
+      if(lines.length) return { lines, info };
+    }
+    if(j.plainLyrics) return { lines:[], info: info || "plain lyrics only (no timing)" };
+    return { lines:[], info:"no synced lyrics found" };
+  }catch(e){ return { lines:[], info:"lyrics lookup failed" }; }
+}
+
+/* ======================================================= voice search == */
+function stripLead(s){
+  const leads = ["play me ","play the ","play ","put on ","search for ","find me ","find "];
+  let r = String(s||"").trim(); const l = r.toLowerCase();
+  for(const lead of leads) if(l.startsWith(lead)) return r.slice(lead.length).trim();
+  return r;
+}
+function parseVoiceCommand(text){
+  let source = "youtube";
+  let body = stripLead(text);
+  function takeTail(marker){
+    const lc = body.toLowerCase();
+    const q = lc.lastIndexOf(marker);
+    if(q<0) return null;
+    const clause = body.slice(q+marker.length).trim();
+    body = body.slice(0,q).trim();
+    return clause;
+  }
+  let clause = takeTail(" from ");
+  if(clause===null) clause = takeTail(" on ");
+  if(clause!==null){
+    const c = clause.toLowerCase();
+    if(c.indexOf("spotify")>=0) source="spotify";
+    else if(c.indexOf("plex")>=0) source="plex";
+    else if(c.indexOf("amazon")>=0) source="amazon";
+    else if(c.indexOf("youtube music")>=0 || c.indexOf("google music")>=0 || c.indexOf("google play music")>=0) source="ytmusic";
+    else if(c.indexOf("youtube")>=0) source="youtube";
+    else body = (body + " " + clause).trim();
+  }
+  let lc = body.toLowerCase();
+  const p = lc.indexOf(" official music video");
+  if(p>=0) body = body.slice(0,p).trim();
+  return { source, query: body };
+}
+function voiceAvailable(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
+function listenOnce(timeoutSec){
+  return new Promise((resolve)=>{
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR) return resolve("");
+    const r = new SR();
+    r.lang = "en-US"; r.interimResults = false; r.maxAlternatives = 1;
+    let done = false;
+    const timer = setTimeout(()=>{ if(!done){ done=true; try{ r.stop(); }catch(e){} resolve(""); } }, (timeoutSec||8)*1000);
+    r.onresult = (e)=>{ if(done) return; done=true; clearTimeout(timer); resolve(e.results[0][0].transcript); };
+    r.onerror = ()=>{ if(done) return; done=true; clearTimeout(timer); resolve(""); };
+    r.onend = ()=>{ if(done) return; done=true; clearTimeout(timer); resolve(""); };
+    try{ r.start(); }catch(e){ done=true; clearTimeout(timer); resolve(""); }
+  });
+}
+
+/* ============================================================ queue ==== */
+let queue = [];      // { source, title, ref, streamPath? }
+let curIndex = -1;
+function qEl(){ return $("#qlist"); }
+function addItem(source, title, ref, extra){
+  const it = Object.assign({ source, title, ref }, extra||{});
+  queue.push(it);
+  renderQueue();
+  return queue.length-1;
+}
+function renderQueue(){
+  const host = qEl();
+  host.innerHTML = "";
+  if(queue.length===0){ host.appendChild(el("div","qempty","Empty — search, open a file, or load a playlist.")); return; }
+  queue.forEach((it,i)=>{
+    const row = el("div","qitem"+(i===curIndex?" cur":""));
+    row.dataset.i = i;
+    const tag = el("span","tag", it.source.slice(0,2).toUpperCase());
+    const tt = el("span","tt", it.title || it.ref);
+    row.appendChild(tag); row.appendChild(tt);
+    row.addEventListener("click", ()=>playIndex(i));
+    row.addEventListener("contextmenu", (e)=>{ e.preventDefault(); openCtxMenu(e.clientX, e.clientY, i); });
+    let touchTimer=null;
+    row.addEventListener("touchstart", ()=>{ touchTimer=setTimeout(()=>openCtxMenu(row.getBoundingClientRect().left+20, row.getBoundingClientRect().top, i), 550); });
+    row.addEventListener("touchend", ()=>{ if(touchTimer) clearTimeout(touchTimer); });
+    host.appendChild(row);
+  });
+}
+
+/* ===================================================== player engine == */
+const media = $("#localMedia");
+const ytHost = $("#ytHost");
+let ytPlayer = null, ytReady = false, ytPendingId = null, ytPendingAutoplay = false, ytPlayerReady = false;
+let engineKind = null; // 'media' | 'youtube' | null
+
+function ytApiLoad(){
+  if(window.YT && window.YT.Player){ ytReady = true; return; }
+  const s = document.createElement("script");
+  s.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(s);
+}
+window.onYouTubeIframeAPIReady = function(){
+  ytReady = true;
+  if(ytPendingId) ytLoadNow(ytPendingId, ytPendingAutoplay);
+};
+function ytLoadNow(id, autoplay){
+  if(!ytReady){ ytPendingId = id; ytPendingAutoplay = autoplay; ytApiLoad(); return; }
+  if(!ytPlayer){
+    ytPlayer = new YT.Player(ytHost, {
+      videoId: id,
+      playerVars: { autoplay: autoplay?1:0, playsinline:1, rel:0, modestbranding:1 },
+      events: {
+        onReady: ()=>{ ytPlayerReady = true; ytPlayer.setVolume(volToPct($("#vol").value)); if(autoplay) ytPlayer.playVideo(); syncPlayButton(); },
+        onStateChange: (e)=>{
+          syncPlayButton();
+          if(e.data === YT.PlayerState.ENDED) onTrackEnded();
+        }
+      }
+    });
+  } else {
+    ytPlayer.loadVideoById(id);
+    if(!autoplay) ytPlayer.pauseVideo();
+  }
+  ytPendingId = null;
+}
+function volToPct(v){ return Math.max(0, Math.min(100, Math.round(v))); }
+
+function showStage(kind){
+  engineKind = kind;
+  ytHost.classList.toggle("on", kind==="youtube");
+  media.style.display = kind==="media" ? "block" : "none";
+  $("#stageEmpty").style.display = kind ? "none" : "flex";
+}
+
+function engineLoad(item){
+  if(item.source === "youtube"){
+    showStage("youtube");
+    ytLoadNow(item.ref, true);
+  } else {
+    showStage("media");
+    media.src = item.playUrl;
+    media.currentTime = 0;
+    media.play().catch(()=>{});
+  }
+}
+function engineStop(){
+  if(engineKind==="youtube" && ytPlayer && ytPlayer.stopVideo) try{ ytPlayer.stopVideo(); }catch(e){}
+  if(engineKind==="media"){ try{ media.pause(); media.currentTime=0; }catch(e){} }
+}
+function ytUsable(){ return engineKind==="youtube" && ytPlayer && ytPlayerReady; }
+function enginePlayPause(){
+  if(ytUsable()){
+    const st = ytPlayer.getPlayerState();
+    if(st===1) ytPlayer.pauseVideo(); else ytPlayer.playVideo();
+  } else if(engineKind==="media"){
+    if(media.paused) media.play().catch(()=>{}); else media.pause();
+  } else if(queue.length>0){
+    playIndex(Math.max(curIndex,0));
+  }
+}
+function enginePlaying(){
+  if(ytUsable()) return ytPlayer.getPlayerState()===1;
+  if(engineKind==="media") return !media.paused && !media.ended;
+  return false;
+}
+function engineSeek(sec){
+  if(ytUsable()) ytPlayer.seekTo(sec, true);
+  else if(engineKind==="media") media.currentTime = sec;
+}
+function engineTime(){
+  if(ytUsable()) return ytPlayer.getCurrentTime()||0;
+  if(engineKind==="media") return media.currentTime||0;
+  return 0;
+}
+function engineDuration(){
+  if(ytUsable()) return ytPlayer.getDuration()||0;
+  if(engineKind==="media") return media.duration||0;
+  return 0;
+}
+function engineSetVolume(v0to130){
+  const pct = volToPct(v0to130);
+  media.volume = Math.min(1, pct/100);
+  if(ytPlayer && ytPlayerReady) try{ ytPlayer.setVolume(pct); }catch(e){}
+}
+media.addEventListener("ended", onTrackEnded);
+
+/* ========================================================= lyrics OSD == */
+let lrc = [], lrcIdx = -2, lrcInfo = "";
+function clearLyrics(){ lrc=[]; lrcIdx=-1; const o=$("#osd"); o.innerHTML=""; o.classList.add("empty"); }
+async function fetchLyricsFor(item){
+  clearLyrics();
+  let artist="", title="", album="";
+  const base = item.source==="file" ? item.title : item.title;
+  ({artist, title} = splitArtistTitle(base));
+  if(item.source==="plex"){
+    const p = item.title.indexOf("  -  ");
+    if(p>=0){
+      const st = splitArtistTitle(item.title.slice(0,p));
+      artist = st.artist; title = st.title;
+      const sub = item.title.slice(p+5).trim();
+      const q = sub.indexOf(" - ");
+      if(q>=0){ const subB = sub.slice(0,q).trim(); album = sub.slice(q+3).trim(); if(!artist) artist = subB; }
+      else if(!artist) artist = sub;
+    }
+  }
+  const dur = engineDuration();
+  status("Looking up lyrics: "+artist+" - "+title+" ...");
+  const r = await fetchSyncedLyrics(artist, title, album, dur>1?Math.round(dur):0);
+  lrc = r.lines; lrcInfo = r.info; lrcIdx = -2;
+  status(lrc.length ? ("Lyrics: "+lrcInfo+"  ("+lrc.length+" lines)") : ("Lyrics: "+lrcInfo));
+}
+function updateLyricOsd(){
+  if(lrc.length===0) return;
+  const t = engineTime();
+  const i = curLrcIndex(lrc, t);
+  if(i===lrcIdx) return;
+  lrcIdx = i;
+  const o = $("#osd");
+  if(i<0){ o.innerHTML=""; o.classList.add("empty"); return; }
+  o.classList.remove("empty");
+  o.innerHTML = "";
+  o.appendChild(el("div","l1", lrc[i].text));
+  if(i+1 < lrc.length && lrc[i+1].text) o.appendChild(el("div","l2", lrc[i+1].text));
+}
+
+/* ==================================================== play / advance === */
+function resolveIfNeeded(item){
+  if(item.source === "plex" && !item.playUrl) item.playUrl = Plex.streamURL(item.streamPath || item.ref);
+}
+function playIndex(i){
+  if(i<0 || i>=queue.length) return;
+  const item = queue[i];
+  resolveIfNeeded(item);
+  if(item.source !== "youtube" && !item.playUrl){
+    status("Could not resolve a playable stream for: "+item.title);
+    return;
+  }
+  curIndex = i;
+  renderQueue();
+  $("#seek").value = 0;
+  engineLoad(item);
+  $("#lblNow").textContent = item.title + "   ("+item.source+")";
+  status("Playing: "+item.title);
+  clearLyrics();
+  if($("#chkLyrics").checked) fetchLyricsFor(item);
+  syncPlayButton();
+}
+function onTrackEnded(){
+  if($("#chkAuto").checked) advanceNext();
+}
+function advanceNext(){
+  if(queue.length===0) return;
+  let n;
+  if($("#chkShuffle").checked) n = Math.floor(Math.random()*queue.length);
+  else n = curIndex+1;
+  if(n >= queue.length){
+    if($("#chkRepeat").checked) n = 0;
+    else { status("Queue finished."); return; }
+  }
+  playIndex(n);
+}
+function syncPlayButton(){
+  if(sourceIsSpotify()){ $("#btnPlay").textContent = "Play/Pause"; return; }
+  $("#btnPlay").textContent = enginePlaying() ? "Pause" : "Play";
+}
+function sourceIsSpotify(){ return $("#cbSource").value === "spotify"; }
+
+/* ================================================================ UI === */
+$("#btnFind").addEventListener("click", doFind);
+$("#edSearch").addEventListener("keypress", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); doFind(); } });
+let busy = false;
+async function doFind(){
+  if(busy) return;
+  const q = $("#edSearch").value.trim();
+  if(!q) return;
+  busy = true;
+  try{
+    const src = $("#cbSource").value;
+    if(src === "spotify"){
+      window.open("https://open.spotify.com/search/"+encodeURIComponent(q)+"/tracks", "_blank");
+      status('Spotify: opened search for "'+q+'" in a new tab — this app can\'t remote-control another site\'s player.');
+      return;
+    }
+    if(src === "plex"){
+      if(!cfg.plexBaseUrl || !cfg.plexToken){ status("Set the Plex server URL + token in Settings first."); return; }
+      status('Searching Plex for "'+q+'"...');
+      let results;
+      try{ results = await Plex.searchTracks(q); }
+      catch(e){ status("Plex search failed: "+e.message); return; }
+      if(!results.length){ status('No Plex tracks matched "'+q+'".'); return; }
+      const start = queue.length;
+      for(const t of results) addItem("plex", t.title + (t.subtitle ? "  -  "+t.subtitle : ""), t.streamPath, { streamPath: t.streamPath });
+      playIndex(start);
+      return;
+    }
+    // youtube
+    const pastedId = extractYouTubeId(q);
+    if(pastedId){
+      status("Loading video "+pastedId+" ...");
+      const title = (await ytOEmbedTitle(pastedId)) || q;
+      const idx = addItem("youtube", title, pastedId);
+      playIndex(idx);
+      return;
+    }
+    if(!cfg.ytApiKey){
+      window.open("https://www.youtube.com/results?search_query="+encodeURIComponent(q), "_blank");
+      status("No YouTube API key set — opened a YouTube search tab. Paste a video link back into Search to queue it (Settings to add a key for in-app search).");
+      return;
+    }
+    status('Finding official music video for "'+q+'"...');
+    let best;
+    try{ best = await ytApiSearch(q); }
+    catch(e){ status("YouTube search failed: "+e.message); return; }
+    if(!best){ status('No match found for "'+q+'".'); return; }
+    const idx = addItem("youtube", best.title || q, best.id);
+    playIndex(idx);
+  } finally {
+    busy = false;
+  }
+}
+
+$("#btnVoice").addEventListener("click", async ()=>{
+  if(busy) return;
+  if(!voiceAvailable()){ status("Voice search isn't supported in this browser — try Chrome or Edge."); return; }
+  status('Listening...  say e.g. "play <song> from Plex"');
+  const heard = await listenOnce(cfg.voiceTimeoutSec);
+  if(!heard){ status("Did not catch that."); return; }
+  const { source, query } = parseVoiceCommand(heard);
+  status('Heard: "'+heard+'"  ->  '+source+': '+query);
+  $("#edSearch").value = query;
+  if(source==="plex") $("#cbSource").value = "plex";
+  else if(source==="spotify") $("#cbSource").value = "spotify";
+  else {
+    $("#cbSource").value = "youtube";
+    if(source==="amazon" || source==="ytmusic") status('"'+source+'" has no playable API here - searching YouTube instead.');
+  }
+  doFind();
+});
+
+$("#btnOpenFile").addEventListener("click", ()=> $("#fileInput").click());
+$("#fileInput").addEventListener("change", (e)=>{
+  const files = Array.from(e.target.files||[]);
+  if(!files.length) return;
+  const start = queue.length;
+  for(const f of files) addItem("file", f.name, f.name, { playUrl: URL.createObjectURL(f) });
+  playIndex(start);
+  e.target.value = "";
+});
+
+$("#btnDownload").addEventListener("click", ()=>{
+  const item = (curIndex>=0 && curIndex<queue.length) ? queue[curIndex] : null;
+  if(!item){ status("Nothing playing to download."); return; }
+  if(item.source === "plex"){
+    const a = document.createElement("a");
+    a.href = Plex.downloadURL(item.streamPath || item.ref);
+    a.download = "";
+    document.body.appendChild(a); a.click(); a.remove();
+    status("Downloading from Plex: "+item.title);
+  } else if(item.source === "file"){
+    status("That item is already a local file.");
+  } else {
+    window.open("https://www.youtube.com/watch?v="+item.ref, "_blank");
+    status("Browsers can't extract raw YouTube streams (that needs yt-dlp, desktop-only) — opened the video on youtube.com instead.");
+  }
+});
+
+$("#btnPrev").addEventListener("click", ()=>{ if(curIndex>0) playIndex(curIndex-1); });
+$("#btnNext").addEventListener("click", advanceNext);
+$("#btnPlay").addEventListener("click", ()=>{ enginePlayPause(); syncPlayButton(); });
+$("#btnStop").addEventListener("click", ()=>{ engineStop(); $("#seek").value=0; syncPlayButton(); });
+
+let updatingSeek = false;
+$("#seek").addEventListener("input", ()=>{
+  if(updatingSeek) return;
+  const dur = engineDuration();
+  if(dur>0) engineSeek($("#seek").value/1000*dur);
+});
+$("#vol").addEventListener("input", ()=>{ engineSetVolume($("#vol").value); });
+
+setInterval(()=>{
+  syncPlayButton();
+  const dur = engineDuration(), cur = engineTime();
+  updatingSeek = true;
+  if(dur>0) $("#seek").value = Math.round(cur/dur*1000);
+  updatingSeek = false;
+  $("#time").textContent = fmtT(cur)+" / "+fmtT(dur);
+  if($("#chkLyrics").checked) updateLyricOsd();
+}, 250);
+
+$("#chkLyrics").addEventListener("change", ()=>{
+  cfg.showLyrics = $("#chkLyrics").checked; save();
+  if(!cfg.showLyrics){ clearLyrics(); return; }
+  if(curIndex>=0 && curIndex<queue.length) fetchLyricsFor(queue[curIndex]);
+});
+
+/* ====================================================== queue context == */
+let ctxIndex = -1;
+function openCtxMenu(x,y,i){
+  ctxIndex = i;
+  const m = $("#ctxMenu");
+  m.style.left = Math.min(x, window.innerWidth-200)+"px";
+  m.style.top = Math.min(y, window.innerHeight-260)+"px";
+  m.classList.add("on");
+}
+document.addEventListener("click", (e)=>{ if(!e.target.closest("#ctxMenu")) $("#ctxMenu").classList.remove("on"); });
+$("#ctxMenu").addEventListener("click", (e)=>{
+  const mi = e.target.closest(".mi"); if(!mi) return;
+  const a = mi.dataset.a;
+  $("#ctxMenu").classList.remove("on");
+  if(a==="play"){ if(ctxIndex>=0) playIndex(ctxIndex); }
+  else if(a==="download"){ if(ctxIndex>=0){ curIndex===ctxIndex || (curIndex=ctxIndex); $("#btnDownload").click(); } }
+  else if(a==="remove"){ removeAt(ctxIndex); }
+  else if(a==="clear"){ clearQueue(); }
+  else if(a==="save"){ savePlaylist(); }
+  else if(a==="load"){ $("#playlistInput").click(); }
+});
+function removeAt(i){
+  if(i<0 || i>=queue.length) return;
+  const it = queue[i];
+  if(it.playUrl && it.source==="file") try{ URL.revokeObjectURL(it.playUrl); }catch(e){}
+  queue.splice(i,1);
+  if(curIndex===i) curIndex=-1; else if(curIndex>i) curIndex--;
+  renderQueue();
+}
+function clearQueue(){
+  for(const it of queue) if(it.playUrl && it.source==="file") try{ URL.revokeObjectURL(it.playUrl); }catch(e){}
+  queue = []; curIndex = -1;
+  renderQueue();
+}
+
+/* ===================================================== playlists (dsrpl) */
+$("#btnSaveList").addEventListener("click", savePlaylist);
+$("#btnLoadList").addEventListener("click", ()=> $("#playlistInput").click());
+function savePlaylist(){
+  if(queue.length===0){ status("Queue is empty - nothing to save."); return; }
+  const items = queue.map(it => ({ source: it.source, title: it.title, ref: it.streamPath || it.ref }));
+  const blob = new Blob([JSON.stringify({ items }, null, 2)], { type:"application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "playlist.dsrpl";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+  status("Saved playlist ("+queue.length+" items).");
+}
+$("#playlistInput").addEventListener("change", async (e)=>{
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if(!f) return;
+  let root;
+  try{ root = JSON.parse(await f.text()); }catch(err){ status("Not a valid playlist file."); return; }
+  const items = root && root.items;
+  if(!Array.isArray(items)){ status("Not a valid playlist file."); return; }
+  const wasEmpty = queue.length===0;
+  const startCount = queue.length;
+  let added=0, skipped=0;
+  for(const it of items){
+    const source = it.source||"", title=it.title||"", ref=it.ref||"";
+    if(!source || !ref){ skipped++; continue; }
+    if(source==="file"){ skipped++; continue; } // browsers can't restore an arbitrary local path
+    if(source==="plex"){
+      if(!cfg.plexBaseUrl || !cfg.plexToken){ skipped++; continue; }
+      addItem("plex", title, ref, { streamPath: ref });
+      added++;
+    } else if(source==="youtube"){
+      addItem("youtube", title, ref);
+      added++;
+    } else skipped++;
+  }
+  if(added===0){ status("Playlist loaded but nothing was playable ("+skipped+" skipped)."); return; }
+  status("Loaded playlist: "+f.name+"  ("+added+" added"+(skipped>0?", "+skipped+" skipped (local files can't be restored — re-open them via Open File)":"")+")");
+  if(wasEmpty) playIndex(0); else if(curIndex<0) playIndex(startCount);
+});
+
+/* ======================================================== audio output == */
+let outputsUnlocked = false;
+async function unlockOutputLabels(){
+  if(outputsUnlocked) return;
+  try{ const s = await navigator.mediaDevices.getUserMedia({ audio:true }); s.getTracks().forEach(t=>t.stop()); outputsUnlocked = true; }
+  catch(e){ /* denied — device labels stay blank, ids still usable */ }
+}
+async function listOutputDevices(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return [];
+  const devs = await navigator.mediaDevices.enumerateDevices();
+  return devs.filter(d=>d.kind==="audiooutput");
+}
+function sinkSupported(){ return typeof media.setSinkId === "function"; }
+async function refreshOutputs(){
+  const sel = $("#outSel");
+  sel.innerHTML = "";
+  if(!sinkSupported()){
+    sel.appendChild(el("option","", "not supported in this browser"));
+    sel.disabled = true;
+    return;
+  }
+  sel.disabled = false;
+  await unlockOutputLabels();
+  const live = await listOutputDevices();
+  let list;
+  if(cfg.btFavNames.length){
+    list = cfg.btFavNames.map((n,i)=>({ deviceId: cfg.btFavIds[i], label: n }));
+  } else {
+    list = live.map(d=>({ deviceId:d.deviceId, label: d.label || ("Output "+d.deviceId.slice(0,6)) }));
+  }
+  for(const d of list){
+    const o = document.createElement("option");
+    o.value = d.deviceId; o.textContent = d.label;
+    sel.appendChild(o);
+  }
+  if(list.length===0) sel.appendChild(el("option","", "No output devices found."));
+}
+$("#btnConnect").addEventListener("click", async ()=>{
+  const id = $("#outSel").value;
+  if(!id){ status("Pick a device first (or add one in Settings)."); return; }
+  try{ await media.setSinkId(id); status("Output -> "+$("#outSel").selectedOptions[0].textContent); }
+  catch(e){ status("Could not switch output: "+e.message); }
+});
+$("#btnRelease").addEventListener("click", async ()=>{
+  const id = cfg.fallbackOutputId || "default";
+  try{ await media.setSinkId(id==="default" ? "" : id); status("Released - output -> "+(cfg.fallbackOutputId?("device "+id.slice(0,6)):"system default")); }
+  catch(e){ status("Could not switch back: "+e.message); }
+});
+
+/* ============================================================ settings == */
+function openSettings(){
+  $("#sPlexUrl").value = cfg.plexBaseUrl;
+  $("#sPlexToken").value = cfg.plexToken;
+  $("#sYtKey").value = cfg.ytApiKey;
+  $("#sVoiceTimeout").value = cfg.voiceTimeoutSec;
+  setStat("");
+  refreshSettingsOutputs();
+  $("#setWrap").classList.add("on");
+}
+$("#btnSettings").addEventListener("click", openSettings);
+$("#btnSetClose").addEventListener("click", ()=> $("#setWrap").classList.remove("on"));
+$("#btnSetSave").addEventListener("click", ()=>{
+  cfg.plexBaseUrl = $("#sPlexUrl").value.trim();
+  cfg.plexToken = $("#sPlexToken").value.trim();
+  cfg.ytApiKey = $("#sYtKey").value.trim();
+  cfg.voiceTimeoutSec = Math.max(3, parseInt($("#sVoiceTimeout").value,10) || 8);
+  cfg.fallbackOutputId = $("#sFallbackOut").value || "";
+  save();
+  $("#setWrap").classList.remove("on");
+  status("Settings saved.");
+  refreshOutputs();
+});
+$("#btnTestPlex").addEventListener("click", async ()=>{
+  const savedUrl = cfg.plexBaseUrl, savedTok = cfg.plexToken;
+  cfg.plexBaseUrl = $("#sPlexUrl").value.trim();
+  cfg.plexToken = $("#sPlexToken").value.trim();
+  setStat("Testing...");
+  try{
+    const name = await Plex.testConnection();
+    setStat("Connected: "+name);
+  }catch(e){
+    setStat(e.message, true);
+  }finally{
+    cfg.plexBaseUrl = savedUrl; cfg.plexToken = savedTok; // restored; Save applies the edit for real
+  }
+});
+async function refreshSettingsOutputs(){
+  const fb = $("#sFallbackOut"), cur = $("#sCurOut");
+  fb.innerHTML = ""; cur.innerHTML = "";
+  fb.appendChild(el("option","","(system default)"));
+  if(!sinkSupported()){
+    cur.appendChild(el("option","","not supported in this browser"));
+  } else {
+    await unlockOutputLabels();
+    const live = await listOutputDevices();
+    for(const d of live){
+      fb.appendChild(new Option(d.label || d.deviceId.slice(0,8), d.deviceId));
+      cur.appendChild(new Option(d.label || d.deviceId.slice(0,8), d.deviceId));
+    }
+  }
+  fb.value = cfg.fallbackOutputId || "";
+  renderFavList();
+}
+function renderFavList(){
+  const host = $("#favList");
+  host.innerHTML = "";
+  if(cfg.btFavNames.length===0){ host.appendChild(el("div","", "No favourite outputs saved — the Output picker shows live devices instead.")); return; }
+  cfg.btFavNames.forEach((n,i)=>{
+    const row = el("div","favrow");
+    row.appendChild(el("span","n", n));
+    const rm = el("button","btn sm warn","Remove");
+    rm.addEventListener("click", ()=>{ cfg.btFavNames.splice(i,1); cfg.btFavIds.splice(i,1); save(); renderFavList(); });
+    row.appendChild(rm);
+    host.appendChild(row);
+  });
+}
+$("#btnAddFav").addEventListener("click", ()=>{
+  const sel = $("#sCurOut");
+  if(!sel.value){ setStat("Pick a device first.", true); return; }
+  const name = sel.selectedOptions[0].textContent;
+  if(cfg.btFavIds.indexOf(sel.value) >= 0){ setStat("Already saved."); return; }
+  cfg.btFavNames.push(name); cfg.btFavIds.push(sel.value);
+  save(); renderFavList(); refreshOutputs();
+  setStat("Saved favourite: "+name);
+});
+
+/* ============================================================== init === */
+(function init(){
+  $("#cbSource").value = "youtube";
+  $("#chkAuto").checked = cfg.autoAdvance;
+  $("#chkShuffle").checked = cfg.shuffleQueue;
+  $("#chkRepeat").checked = cfg.repeatQueue;
+  $("#chkLyrics").checked = cfg.showLyrics;
+  $("#vol").value = cfg.lastVolume;
+  for(const id of ["chkAuto","chkShuffle","chkRepeat"]){
+    $("#"+id).addEventListener("change", ()=>{
+      cfg.autoAdvance = $("#chkAuto").checked;
+      cfg.shuffleQueue = $("#chkShuffle").checked;
+      cfg.repeatQueue = $("#chkRepeat").checked;
+      save();
+    });
+  }
+  $("#vol").addEventListener("change", ()=>{ cfg.lastVolume = parseInt($("#vol").value,10); save(); });
+  engineSetVolume(cfg.lastVolume);
+  renderQueue();
+  refreshOutputs();
+  if(voiceAvailable()===false) $("#btnVoice").title = "Not supported in this browser";
+  status("Ready. " + (cfg.ytApiKey ? "YouTube search key set." : "No YouTube API key — paste video links, or add a key in Settings."));
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("service-worker.js").catch(()=>{});
+  }
+})();
+</script>
+</body>
+</html>
