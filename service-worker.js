@@ -3,7 +3,7 @@
    connection gets the latest index.html / assets, cache is the offline
    fallback only. Plex / YouTube / lrclib requests (cross-origin) always hit
    the network directly and are never cached. */
-const CACHE = 'dsr-oma-v1c';
+const CACHE = 'dsr-oma-v1d';
 const OWN = 'dsr-oma-';   // only ever delete THIS app's old caches – every DSR app shares the github.io origin's cache storage
 const SHELL = ['./', './index.html', './manifest.json', './icon.svg'];
 
@@ -24,7 +24,9 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return; // Plex / YouTube / lrclib / CDN
   e.respondWith(
-    fetch(e.request)
+    // cache:'no-cache' = always revalidate with GitHub (cheap 304 if unchanged); plain fetch() could
+    // be answered from the browser's HTTP cache for ~10 min, so an update showed the old version (1d)
+    fetch(e.request, { cache: 'no-cache' })
       .then(res => {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});

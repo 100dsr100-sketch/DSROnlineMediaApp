@@ -145,6 +145,13 @@
     .mid{flex-direction:column}
     .queuepane{width:auto;height:28vh;border-right:0;border-bottom:1px solid var(--line)}
     .stage{min-height:56vw}   /* at least a 16:9 video area across the phone's width */
+    /* 1d: the fixed full-screen frame couldn't hold queue + video + controls, so the video slid under
+       the controls - on phones the page scrolls instead and everything sits one below the other */
+    html,body{height:auto}
+    .app{position:static;min-height:100vh}
+    .mid{flex:none}
+    .stage{flex:none;height:56vw}
+    body.fit .stage{height:calc(100vh - 410px);min-height:56vw}   /* Fit: the video takes the room the queue had */
   }
 </style>
 </head>
@@ -157,7 +164,7 @@
       <h1>DSR Online Media App</h1>
       <p>Jukebox — search, queue, play, route</p>
     </div>
-    <div class="ver">1c</div>
+    <div class="ver">1d</div>
   </div>
 
   <div class="topbar">
@@ -649,7 +656,11 @@ window.onYouTubeIframeAPIReady = function(){
 function ytLoadNow(id, autoplay){
   if(!ytReady){ ytPendingId = id; ytPendingAutoplay = autoplay; ytApiLoad(); return; }
   if(!ytPlayer){
-    ytPlayer = new YT.Player(ytHost, {
+    // 1d: YT.Player REPLACES the element it's given - hand it an inner placeholder so its iframe
+    // stays inside #ytHost (sized + clipped). Giving it #ytHost itself left a free-floating 640x390
+    // iframe that ran off the phone screen over the controls, and "on" toggled a detached div.
+    const slot = document.createElement("div"); ytHost.appendChild(slot);
+    ytPlayer = new YT.Player(slot, {
       videoId: id,
       playerVars: { autoplay: autoplay?1:0, playsinline:1, rel:0, modestbranding:1 },
       events: {
