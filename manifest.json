@@ -1,6 +1,6 @@
 {
   "name": "DSR Online Media Web",
-  "short_name": "Media Web",
+  "short_name": "DSR Media Web",
   "description": "Jukebox: search YouTube/Plex/Spotify, queue, play, route audio output, synced lyrics.",
   "start_url": ".",
   "scope": ".",
