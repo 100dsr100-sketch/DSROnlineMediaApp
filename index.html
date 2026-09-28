@@ -80,13 +80,21 @@
   .chk input{width:15px;height:15px;accent-color:var(--gold)}
 
   .stage{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;position:relative;background:#050505}
-  #videoHost{flex:1;position:relative;background:#050505;min-height:0;overflow:hidden}   /* 1b: nothing spills off-screen */
+  /* 1e: two video layouts, picked with the "Video" radio pair (default Original):
+     Original = the 1a layout exactly; Fitted (body.fitted) = the 1b-1d fit-to-screen layout */
+  #videoHost{flex:1;position:relative;background:#050505;min-height:0}
   #localMedia{width:100%;height:100%;object-fit:contain;background:#000;display:block}
   #ytHost{position:absolute;inset:0;display:none}
   #ytHost.on{display:block}
-  #ytHost iframe{position:absolute;inset:0;width:100% !important;height:100% !important;max-width:100%;border:0}   /* YouTube's player sets 640x390 itself */
-  /* Fit: hide the queue so the video gets the whole middle of the screen */
-  body.fit .queuepane{display:none}
+  #ytHost iframe{width:100%;height:100%;border:0}
+  body.fitted #videoHost{overflow:hidden}
+  body.fitted #ytHost iframe{position:absolute;inset:0;width:100% !important;height:100% !important;max-width:100%}
+  /* Fit (Fitted layout only): hide the queue so the video gets the whole middle of the screen */
+  body.fitted.fit .queuepane{display:none}
+  body:not(.fitted) #btnFit{display:none}
+  .vlay{display:flex;gap:14px;align-items:center;font-size:12px;color:var(--gold-deep)}
+  .vlay label{display:flex;align-items:center;gap:5px;cursor:pointer}
+  .vlay input{width:15px;height:15px;accent-color:var(--gold)}
   /* Full screen (the video area itself) */
   #videoHost:fullscreen{background:#000}
   #videoHost:fullscreen #osd{bottom:12px}
@@ -139,23 +147,29 @@
   #ctxMenu .sep{height:1px;background:var(--line);margin:4px 2px}
 
   @media (max-width:720px){
-    .tp1{flex-wrap:wrap}
-    .tp1 #seek{flex:1 1 100%;order:10}   /* seek bar gets its own full-width line on phones */
-    .tp1 #time{order:11;margin-left:auto}
+    /* Original layout (1a) */
     .mid{flex-direction:column}
-    .queuepane{width:auto;height:28vh;border-right:0;border-bottom:1px solid var(--line)}
-    .stage{min-height:56vw}   /* at least a 16:9 video area across the phone's width */
-    /* 1d: the fixed full-screen frame couldn't hold queue + video + controls, so the video slid under
-       the controls - on phones the page scrolls instead and everything sits one below the other */
-    html,body{height:auto}
-    .app{position:static;min-height:100vh}
-    .mid{flex:none}
-    .stage{flex:none;height:56vw}
-    body.fit .stage{height:calc(100vh - 410px);min-height:56vw}   /* Fit: the video takes the room the queue had */
+    .queuepane{width:auto;height:38vh;border-right:0;border-bottom:1px solid var(--line)}
+    /* Fitted layout (1b-1d) */
+    body.fitted .tp1{flex-wrap:wrap}
+    body.fitted .tp1 #seek{flex:1 1 100%;order:10}   /* seek bar gets its own full-width line on phones */
+    body.fitted .tp1 #time{order:11;margin-left:auto}
+    body.fitted .queuepane{height:28vh}
+    /* the fixed full-screen frame couldn't hold queue + video + controls, so the video slid under
+       the controls - in Fitted the page scrolls instead and everything sits one below the other */
+    body.fitted, html:has(body.fitted){height:auto}
+    body.fitted .app{position:static;min-height:100vh}
+    body.fitted .mid{flex:none}
+    body.fitted .stage{flex:none;height:56vw;min-height:56vw}
+    body.fitted.fit .stage{height:calc(100vh - 410px)}   /* Fit: the video takes the room the queue had */
   }
 </style>
 </head>
 <body>
+<script>
+/* 1e: video layout chosen before anything else runs (the YouTube player is built for one layout) */
+try { if (localStorage.getItem("oma.layout") === "fitted") document.body.classList.add("fitted"); } catch (e) {}
+</script>
 <div class="app">
 
   <div class="banner">
@@ -164,7 +178,7 @@
       <h1>DSR Online Media App</h1>
       <p>Jukebox — search, queue, play, route</p>
     </div>
-    <div class="ver">1d</div>
+    <div class="ver">1e</div>
   </div>
 
   <div class="topbar">
@@ -199,6 +213,9 @@
         <label class="chk"><input type="checkbox" id="chkShuffle"> Shuffle</label>
         <label class="chk"><input type="checkbox" id="chkRepeat"> Repeat queue</label>
         <label class="chk"><input type="checkbox" id="chkLyrics"> Lyrics (synced, on video)</label>
+        <div class="vlay">Video:
+          <label><input type="radio" name="vlay" value="original" id="vlayOrig"> Original</label>
+          <label><input type="radio" name="vlay" value="fitted" id="vlayFit"> Fitted</label></div>
       </div>
     </div>
 
@@ -659,8 +676,10 @@ function ytLoadNow(id, autoplay){
     // 1d: YT.Player REPLACES the element it's given - hand it an inner placeholder so its iframe
     // stays inside #ytHost (sized + clipped). Giving it #ytHost itself left a free-floating 640x390
     // iframe that ran off the phone screen over the controls, and "on" toggled a detached div.
-    const slot = document.createElement("div"); ytHost.appendChild(slot);
-    ytPlayer = new YT.Player(slot, {
+    // 1e: Original layout = the 1a player exactly (YouTube replaces #ytHost with its own fixed-size frame)
+    let target = ytHost;
+    if (document.body.classList.contains("fitted")) { target = document.createElement("div"); ytHost.appendChild(target); }
+    ytPlayer = new YT.Player(target, {
       videoId: id,
       playerVars: { autoplay: autoplay?1:0, playsinline:1, rel:0, modestbranding:1 },
       events: {
@@ -1200,6 +1219,13 @@ $("#btnAddFav").addEventListener("click", ()=>{
   const applyFit = () => { document.body.classList.toggle("fit", fit); fitBtn.textContent = fit ? "Queue" : "Fit"; fitBtn.title = fit ? "Show the queue again" : "Fit the video: hide the queue"; };
   fitBtn.onclick = () => { fit = !fit; try { localStorage.setItem("oma.fit", fit ? "1" : "0"); } catch (e) {} applyFit(); };
   applyFit();
+  // 1e: Video layout radio pair - Original (1a, default) / Fitted; switching rebuilds the player (reload)
+  const fitted = document.body.classList.contains("fitted");
+  document.getElementById(fitted ? "vlayFit" : "vlayOrig").checked = true;
+  document.querySelectorAll('input[name="vlay"]').forEach(r => r.onchange = () => {
+    try { localStorage.setItem("oma.layout", r.value); } catch (e) {}
+    location.reload();
+  });
   fullBtn.onclick = async () => {
     try {
       if (document.fullscreenElement) { await document.exitFullscreen(); return; }
