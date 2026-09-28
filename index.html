@@ -139,6 +139,9 @@
   #ctxMenu .sep{height:1px;background:var(--line);margin:4px 2px}
 
   @media (max-width:720px){
+    .tp1{flex-wrap:wrap}
+    .tp1 #seek{flex:1 1 100%;order:10}   /* seek bar gets its own full-width line on phones */
+    .tp1 #time{order:11;margin-left:auto}
     .mid{flex-direction:column}
     .queuepane{width:auto;height:28vh;border-right:0;border-bottom:1px solid var(--line)}
     .stage{min-height:56vw}   /* at least a 16:9 video area across the phone's width */
@@ -154,11 +157,11 @@
       <h1>DSR Online Media App</h1>
       <p>Jukebox — search, queue, play, route</p>
     </div>
-    <div class="ver">1b</div>
+    <div class="ver">1c</div>
   </div>
 
   <div class="topbar">
-    <input type="text" id="edSearch" placeholder="song / artist — Enter to find, or paste a YouTube link">
+    <input type="search" id="edSearch" enterkeyhint="search" autocomplete="off" placeholder="song / artist — Enter to find, or paste a YouTube link">
     <select id="cbSource">
       <option value="youtube">YouTube</option>
       <option value="plex">Plex</option>
@@ -807,7 +810,10 @@ function sourceIsSpotify(){ return $("#cbSource").value === "spotify"; }
 
 /* ================================================================ UI === */
 $("#btnFind").addEventListener("click", doFind);
-$("#edSearch").addEventListener("keypress", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); doFind(); } });
+// 1c: Android keyboards often send no keypress, and without enterkeyhint the action key was "Next",
+// which jumped to the source list. keydown Enter (or the keyboard's Search key) finds straight away
+// on the provider already selected.
+$("#edSearch").addEventListener("keydown", (e)=>{ if(e.key==="Enter" || e.keyCode===13){ e.preventDefault(); e.target.blur(); doFind(); } });
 let busy = false;
 async function doFind(){
   if(busy) return;
