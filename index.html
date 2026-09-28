@@ -88,7 +88,7 @@
   #ytHost.on{display:block}
   #ytHost iframe{width:100%;height:100%;border:0}
   body.fitted #videoHost{overflow:hidden}
-  body.fitted #ytHost iframe{position:absolute;inset:0;width:100% !important;height:100% !important;max-width:100%}
+  body.fitted #ytHost iframe, body.fitted iframe#ytHost{position:absolute;inset:0;width:100% !important;height:100% !important;max-width:100%}   /* 1f: also fits the Original player (the iframe that replaced #ytHost), so switching is live */
   /* Fit (Fitted layout only): hide the queue so the video gets the whole middle of the screen */
   body.fitted.fit .queuepane{display:none}
   body:not(.fitted) #btnFit{display:none}
@@ -178,7 +178,7 @@ try { if (localStorage.getItem("oma.layout") === "fitted") document.body.classLi
       <h1>DSR Online Media App</h1>
       <p>Jukebox — search, queue, play, route</p>
     </div>
-    <div class="ver">1e</div>
+    <div class="ver">1f</div>
   </div>
 
   <div class="topbar">
@@ -1219,12 +1219,13 @@ $("#btnAddFav").addEventListener("click", ()=>{
   const applyFit = () => { document.body.classList.toggle("fit", fit); fitBtn.textContent = fit ? "Queue" : "Fit"; fitBtn.title = fit ? "Show the queue again" : "Fit the video: hide the queue"; };
   fitBtn.onclick = () => { fit = !fit; try { localStorage.setItem("oma.fit", fit ? "1" : "0"); } catch (e) {} applyFit(); };
   applyFit();
-  // 1e: Video layout radio pair - Original (1a, default) / Fitted; switching rebuilds the player (reload)
+  // 1e: Video layout radio pair - Original (1a, default) / Fitted. 1f: switches live (no reload) so the
+  // playing video + search results stay; the player itself is only rebuilt the Original way on next launch
   const fitted = document.body.classList.contains("fitted");
   document.getElementById(fitted ? "vlayFit" : "vlayOrig").checked = true;
   document.querySelectorAll('input[name="vlay"]').forEach(r => r.onchange = () => {
     try { localStorage.setItem("oma.layout", r.value); } catch (e) {}
-    location.reload();
+    document.body.classList.toggle("fitted", r.value === "fitted");
   });
   fullBtn.onclick = async () => {
     try {
