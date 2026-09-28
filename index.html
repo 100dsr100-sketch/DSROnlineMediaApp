@@ -80,11 +80,16 @@
   .chk input{width:15px;height:15px;accent-color:var(--gold)}
 
   .stage{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;position:relative;background:#050505}
-  #videoHost{flex:1;position:relative;background:#050505;min-height:0}
+  #videoHost{flex:1;position:relative;background:#050505;min-height:0;overflow:hidden}   /* 1b: nothing spills off-screen */
   #localMedia{width:100%;height:100%;object-fit:contain;background:#000;display:block}
   #ytHost{position:absolute;inset:0;display:none}
   #ytHost.on{display:block}
-  #ytHost iframe{width:100%;height:100%;border:0}
+  #ytHost iframe{position:absolute;inset:0;width:100% !important;height:100% !important;max-width:100%;border:0}   /* YouTube's player sets 640x390 itself */
+  /* Fit: hide the queue so the video gets the whole middle of the screen */
+  body.fit .queuepane{display:none}
+  /* Full screen (the video area itself) */
+  #videoHost:fullscreen{background:#000}
+  #videoHost:fullscreen #osd{bottom:12px}
   #stageEmpty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
     color:var(--gold-dim);font-size:13px;text-align:center;padding:20px;pointer-events:none}
   #osd{position:absolute;left:0;right:0;bottom:0;padding:10px 14px 14px;text-align:center;
@@ -135,7 +140,8 @@
 
   @media (max-width:720px){
     .mid{flex-direction:column}
-    .queuepane{width:auto;height:38vh;border-right:0;border-bottom:1px solid var(--line)}
+    .queuepane{width:auto;height:28vh;border-right:0;border-bottom:1px solid var(--line)}
+    .stage{min-height:56vw}   /* at least a 16:9 video area across the phone's width */
   }
 </style>
 </head>
@@ -148,7 +154,7 @@
       <h1>DSR Online Media App</h1>
       <p>Jukebox — search, queue, play, route</p>
     </div>
-    <div class="ver">1a</div>
+    <div class="ver">1b</div>
   </div>
 
   <div class="topbar">
@@ -202,6 +208,8 @@
       <button class="btn" id="btnPlay">Play</button>
       <button class="btn" id="btnStop">Stop</button>
       <button class="btn" id="btnNext">&gt;|</button>
+      <button class="btn" id="btnFit" title="Fit the video: hide the queue">Fit</button>
+      <button class="btn" id="btnFull" title="Full screen video">⛶</button>
       <input type="range" id="seek" min="0" max="1000" value="0">
       <div id="time">0:00 / 0:00</div>
     </div>
@@ -1165,6 +1173,27 @@ $("#btnAddFav").addEventListener("click", ()=>{
   if("serviceWorker" in navigator){
     navigator.serviceWorker.register("service-worker.js").catch(()=>{});
   }
+})();
+</script>
+<script>
+/* 1b: Fit + Full screen for the video (phone: the video area was tiny / ran off the screen) */
+(function () {
+  const host = document.getElementById("videoHost"), fitBtn = document.getElementById("btnFit"), fullBtn = document.getElementById("btnFull");
+  let fit = false; try { fit = localStorage.getItem("oma.fit") === "1"; } catch (e) {}
+  const applyFit = () => { document.body.classList.toggle("fit", fit); fitBtn.textContent = fit ? "Queue" : "Fit"; fitBtn.title = fit ? "Show the queue again" : "Fit the video: hide the queue"; };
+  fitBtn.onclick = () => { fit = !fit; try { localStorage.setItem("oma.fit", fit ? "1" : "0"); } catch (e) {} applyFit(); };
+  applyFit();
+  fullBtn.onclick = async () => {
+    try {
+      if (document.fullscreenElement) { await document.exitFullscreen(); return; }
+      await (host.requestFullscreen ? host.requestFullscreen() : host.webkitRequestFullscreen());
+      try { await screen.orientation.lock("landscape"); } catch (e) {}   // phones: turn sideways where allowed
+    } catch (e) { alert("Full screen isn't available here: " + e.message); }
+  };
+  document.addEventListener("fullscreenchange", () => {
+    fullBtn.textContent = document.fullscreenElement ? "✕" : "⛶";
+    if (!document.fullscreenElement) { try { screen.orientation.unlock(); } catch (e) {} }
+  });
 })();
 </script>
 </body>
