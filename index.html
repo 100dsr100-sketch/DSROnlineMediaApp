@@ -178,7 +178,7 @@ try { if (localStorage.getItem("oma.layout") === "fitted") document.body.classLi
       <h1>DSR Online Media App</h1>
       <p>Jukebox — search, queue, play, route</p>
     </div>
-    <div class="ver">1f</div>
+    <div class="ver">1g</div>
   </div>
 
   <div class="topbar">
@@ -853,8 +853,19 @@ async function doFind(){
   try{
     const src = $("#cbSource").value;
     if(src === "spotify"){
-      window.open("https://open.spotify.com/search/"+encodeURIComponent(q)+"/tracks", "_blank");
-      status('Spotify: opened search for "'+q+'" in a new tab — this app can\'t remote-control another site\'s player.');
+      // 1g: on Android an open.spotify.com/search link is grabbed by the Spotify APP, which drops the
+      // search and just opens its home screen. Ask the app for the search itself (spotify:search:<q>);
+      // no app installed -> Chrome falls back to the web search page.
+      const web = "https://open.spotify.com/search/"+encodeURIComponent(q)+"/tracks";
+      if(/Android/i.test(navigator.userAgent)){
+        const a = document.createElement("a");
+        a.href = "intent:search:"+encodeURIComponent(q).replace(/%20/g,"+")+"#Intent;scheme=spotify;package=com.spotify.music;S.browser_fallback_url="+encodeURIComponent(web)+";end";
+        document.body.appendChild(a); a.click(); a.remove();
+        status('Spotify: searching for "'+q+'" in the Spotify app (this app can\'t remote-control it).');
+      } else {
+        window.open(web, "_blank");
+        status('Spotify: opened search for "'+q+'" in a new tab — this app can\'t remote-control another site\'s player.');
+      }
       return;
     }
     if(src === "plex"){
