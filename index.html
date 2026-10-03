@@ -11,6 +11,10 @@
 <link rel="icon" href="icon.svg">
 <link rel="apple-touch-icon" href="icon.svg">
 <title>DSR Online Media Web</title>
+<script>/* 2a: own address dsr-online-media.pages.dev - the old shared github.io copy shows an "OLD COPY - moved" page that can
+   move this app's data across; see dsr-move.js */
+window.DSR_MOVE = { name: "DSR Online Media Web", to: "https://dsr-online-media.pages.dev/", ls: ["dsroma.","oma."], idb: [] };</script>
+<script src="dsr-move.js?v=3"></script>
 <style>
   :root{
     --gold:#FFD700; --gold-deep:#D4AF42; --gold-dim:#8a7420;
@@ -178,7 +182,7 @@ try { if (localStorage.getItem("oma.layout") === "fitted") document.body.classLi
       <h1>DSR Online Media App</h1>
       <p>Jukebox — search, queue, play, route</p>
     </div>
-    <div class="ver">1g</div>
+    <div class="ver">2a</div>
   </div>
 
   <div class="topbar">
