@@ -10,6 +10,9 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg">
 <link rel="apple-touch-icon" href="icon.svg">
+<!-- 2c: open the connections to YouTube early - the first video starts sooner -->
+<link rel="preconnect" href="https://www.youtube.com">
+<link rel="preconnect" href="https://i.ytimg.com">
 <title>DSR Online Media Web</title>
 <script>/* 2a: own address dsr-online-media.pages.dev - the old shared github.io copy shows an "OLD COPY - moved" page that can
    move this app's data across; see dsr-move.js */
@@ -182,7 +185,7 @@ try { if (localStorage.getItem("oma.layout") === "fitted") document.body.classLi
       <h1>DSR Online Media App</h1>
       <p>Jukebox — search, queue, play, route</p>
     </div>
-    <div class="ver">2b</div>
+    <div class="ver">2c</div>
   </div>
 
   <div class="topbar">
@@ -649,14 +652,22 @@ function renderQueue(){
     const tag = el("span","tag", it.source.slice(0,2).toUpperCase());
     const tt = el("span","tt", it.title || it.ref);
     row.appendChild(tag); row.appendChild(tt);
-    row.addEventListener("click", ()=>playIndex(i));
-    row.addEventListener("contextmenu", (e)=>{ e.preventDefault(); openCtxMenu(e.clientX, e.clientY, i); });
-    let touchTimer=null;
-    row.addEventListener("touchstart", ()=>{ touchTimer=setTimeout(()=>openCtxMenu(row.getBoundingClientRect().left+20, row.getBoundingClientRect().top, i), 550); });
-    row.addEventListener("touchend", ()=>{ if(touchTimer) clearTimeout(touchTimer); });
     host.appendChild(row);
   });
 }
+// 2c: the rows used to get 4 new listeners each, every time the list was redrawn - now one set on the list itself
+(function(){
+  const host = qEl();
+  const rowOf = e => e.target.closest && e.target.closest(".qitem");
+  let touchTimer = null;
+  host.addEventListener("click", e => { const r = rowOf(e); if(r) playIndex(+r.dataset.i); });
+  host.addEventListener("contextmenu", e => { const r = rowOf(e); if(!r) return; e.preventDefault(); openCtxMenu(e.clientX, e.clientY, +r.dataset.i); });
+  host.addEventListener("touchstart", e => {
+    const r = rowOf(e); if(!r) return;
+    touchTimer = setTimeout(() => openCtxMenu(r.getBoundingClientRect().left+20, r.getBoundingClientRect().top, +r.dataset.i), 550);
+  }, { passive: true });
+  ["touchend","touchmove","touchcancel"].forEach(ev => host.addEventListener(ev, () => { if(touchTimer){ clearTimeout(touchTimer); touchTimer = null; } }, { passive: true }));
+})();
 
 /* ===================================================== player engine == */
 const media = $("#localMedia");
@@ -664,12 +675,17 @@ const ytHost = $("#ytHost");
 let ytPlayer = null, ytReady = false, ytPendingId = null, ytPendingAutoplay = false, ytPlayerReady = false;
 let engineKind = null; // 'media' | 'youtube' | null
 
+let ytApiRequested = false;
 function ytApiLoad(){
   if(window.YT && window.YT.Player){ ytReady = true; return; }
+  if(ytApiRequested) return;          // 2c: one script tag, however often it's asked for
+  ytApiRequested = true;
   const s = document.createElement("script");
   s.src = "https://www.youtube.com/iframe_api";
   document.head.appendChild(s);
 }
+// 2c: fetch YouTube's player script in idle time after start-up, so the first play doesn't wait for it
+(window.requestIdleCallback || (f => setTimeout(f, 1500)))(() => ytApiLoad());
 window.onYouTubeIframeAPIReady = function(){
   ytReady = true;
   if(ytPendingId) ytLoadNow(ytPendingId, ytPendingAutoplay);
@@ -837,8 +853,7 @@ function advanceNext(){
   playIndex(n);
 }
 function syncPlayButton(){
-  if(sourceIsSpotify()){ $("#btnPlay").textContent = "Play/Pause"; return; }
-  $("#btnPlay").textContent = enginePlaying() ? "Pause" : "Play";
+  updateTicker();   // 2c: sets the button text (via tick) and starts/stops the timer
 }
 function sourceIsSpotify(){ return $("#cbSource").value === "spotify"; }
 
@@ -969,23 +984,36 @@ $("#btnNext").addEventListener("click", advanceNext);
 $("#btnPlay").addEventListener("click", ()=>{ enginePlayPause(); syncPlayButton(); });
 $("#btnStop").addEventListener("click", ()=>{ engineStop(); $("#seek").value=0; syncPlayButton(); });
 
-let updatingSeek = false;
+var updatingSeek = false;
 $("#seek").addEventListener("input", ()=>{
   if(updatingSeek) return;
   const dur = engineDuration();
-  if(dur>0) engineSeek($("#seek").value/1000*dur);
+  if(dur>0){ engineSeek($("#seek").value/1000*dur); lastSeekVal = +$("#seek").value; setTimeout(tick, 150); }
 });
 $("#vol").addEventListener("input", ()=>{ engineSetVolume($("#vol").value); });
 
-setInterval(()=>{
-  syncPlayButton();
+/* 2c: this used to run 4x a second for ever - nothing playing, app in the background, all the same. Now it only
+   runs while something is playing and the screen is showing (track changes come from the players' own events,
+   not from this), and it only touches the page when a value actually changed. */
+var tickTimer = null, lastSeekVal = -1, lastTimeTxt = "", lastBtnTxt = "";   // var: syncPlayButton may run before this line
+function tick(){
+  const txt = sourceIsSpotify() ? "Play/Pause" : (enginePlaying() ? "Pause" : "Play");
+  if(txt !== lastBtnTxt){ $("#btnPlay").textContent = txt; lastBtnTxt = txt; }
   const dur = engineDuration(), cur = engineTime();
-  updatingSeek = true;
-  if(dur>0) $("#seek").value = Math.round(cur/dur*1000);
-  updatingSeek = false;
-  $("#time").textContent = fmtT(cur)+" / "+fmtT(dur);
+  const sv = dur>0 ? Math.round(cur/dur*1000) : 0;
+  if(sv !== lastSeekVal){ updatingSeek = true; $("#seek").value = sv; updatingSeek = false; lastSeekVal = sv; }
+  const tt = fmtT(cur)+" / "+fmtT(dur);
+  if(tt !== lastTimeTxt){ $("#time").textContent = tt; lastTimeTxt = tt; }
   if($("#chkLyrics").checked) updateLyricOsd();
-}, 250);
+}
+function updateTicker(){
+  const want = document.visibilityState === "visible" && enginePlaying();
+  if(want && !tickTimer) tickTimer = setInterval(tick, 250);
+  else if(!want && tickTimer){ clearInterval(tickTimer); tickTimer = null; }
+  tick();   // one refresh now either way
+}
+document.addEventListener("visibilitychange", updateTicker);
+["play","pause","ended","loadedmetadata","seeked"].forEach(ev => media.addEventListener(ev, syncPlayButton));
 
 $("#chkLyrics").addEventListener("change", ()=>{
   cfg.showLyrics = $("#chkLyrics").checked; save();
